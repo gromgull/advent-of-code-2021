@@ -33,6 +33,7 @@ while True:
     a[idx] = basin
     a[nines] = 9
 
+    # why didn't I use convolve2d for this? :thinking_face:
     idx = (np.concatenate((idx[0]+1, idx[0]-1, idx[0], idx[0])), np.concatenate((idx[1], idx[1], idx[1]+1, idx[1]-1)))
     basin = np.concatenate((basin, basin, basin, basin))
 
