@@ -11,7 +11,7 @@ folds = [ (l[0],int(l[1])) for l in folds ]
 xs = np.array([ int(l[0]) for l in xys ])
 ys = np.array([ int(l[1]) for l in xys ])
 
-paper = np.zeros((xs.max()+2, ys.max()+3),dtype=bool)
+paper = np.zeros((xs.max()+1, ys.max()+1),dtype=bool)
 
 paper[xs,ys] = 1
 
@@ -21,9 +21,15 @@ for axis,fold in folds:
     print(paper.shape)
     print(axis,fold)
     if axis=='y':
-        paper = paper[:,:fold] | paper[:,fold+1:][:,::-1]
+        a = paper[:,:fold]
+        b = paper[:,fold+1:][:,::-1]
+        paper = a
+        paper[:,-b.shape[1]:] |= b
     elif axis=='x':
-        paper = paper[:fold,:] | paper[fold+1:,:][::-1,:]
+        a = paper[:fold,:]
+        b = paper[fold+1:,:][::-1,:]
+        paper = a
+        paper[-b.shape[0]:,:] |= b
 
 msg = str(paper.astype(int).T)
 msg = re.sub(r'([^\]])\n',r'\1', msg)
