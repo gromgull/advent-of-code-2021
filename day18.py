@@ -23,21 +23,15 @@ def action(s):
                 s[j] += s[i]
             if j := nextnum(s,i+2):
                 s[j] += s[i+1]
-            del s[i-1:i+3]
-            s.insert(i-1, 0)
+            s[i-1:i+3] = [0]
             return s
 
     for i in range(len(s)):
         # splits
 
         if isinstance(s[i], int) and s[i]>9:
-            a = b = s[i] / 2
-            a = int(math.floor(b))
-            b = int(math.ceil(b))
-            s[i] = ']'
-            s.insert(i, b)
-            s.insert(i, a)
-            s.insert(i, '[')
+            n = s[i] / 2
+            s[i:i+1] = ['[', int(math.floor(n)), int(math.ceil(n)), ']']
             return s
 
     raise NoActionException()
@@ -64,22 +58,24 @@ def parse(s):
 def process(s, it=1):
     return reduce(parse(s),it)
 
-
-def tostr_(s):
-    # put the commas back
-    lc = None
-    for c in s:
-        # so beautiful
-        if c == '[' and ( isinstance(lc, int) or lc==']'): yield ','
-        if str(c) not in '[]' and lc!='[': yield ','
-        yield str(c)
-        lc = c
+def to_list(s):
+     stack = [[]]
+     for c in s:
+         if c == '[':
+             stack.append([])
+         elif c == ']':
+             v = stack.pop()
+             stack[-1].append(v)
+         else:
+             stack[-1].append(c)
+     return stack.pop().pop()
 
 def tostr(s):
-    return ''.join(tostr_(s))
+    return str(to_list(s))
 
 def test(a,b,it=1):
-    a = tostr(process(a,it))
+    a = to_list(process(a,it))
+    b = eval(b)
     if a!=b:
 
         print(a,"!=",b)
@@ -96,7 +92,7 @@ def add_all(lines):
 
 
 def magnitude(s):
-    s = eval(tostr(s))
+    s = to_list(s)
 
     def _m(s):
         if isinstance(s, int): return s
