@@ -11,26 +11,44 @@ for l in lines:
 
 scanners = [ np.array(s) for s in scanners ]
 
-def transform(front, sign, up):
+def transform(front, up):
+
+    rz,ry = [
+        [ 0, 0],
+        [ 1, 0],
+        [ 2, 0],
+        [ 3, 0],
+        [ 0, 1],
+        [ 0, 3]][front]
+
+    crz = np.cos(rz*np.pi/2)
+    srz = np.sin(rz*np.pi/2)
+
+    cry = np.cos(ry*np.pi/2)
+    sry = np.sin(ry*np.pi/2)
+
+    crx = np.cos(up*np.pi/2)
+    srx = np.sin(up*np.pi/2)
+
+    mx = [[1,   0,    0],
+          [0, crx, -srx],
+          [0, srx,  crx]]
+    my = [[cry,  0, sry],
+          [0,    1,   0],
+          [-sry, 0, cry]]
+    mz = [[crz, -srz, 0],
+          [srz,  crz, 0],
+          [0,      0, 1]]
+
+    m = (np.array(mz, dtype=int) @ my) @ mx
 
     def t(xyz):
+        return np.matmul(xyz, m).astype(int)
 
-        y,z = [[1,2],[0,2],[0,1]][front]
-
-        y,ys,z,zs = [(z, -1, y,  1),
-                     (y,  1, z, -1),
-                     (z, -1, y, -1),
-                     (y,  1, z,  1)][up]
-
-        res = xyz[:, (front, y, z)]
-        res *= [ sign, ys, zs ]
-
-        return res
-
-    t.params = (front, sign, up)
+    t.params = (front, up)
     return t
 
-transforms = [ transform(front, sign, up) for front in range(3) for sign in [1,-1] for up in range(4)]
+transforms = [ transform(front, up) for front in range(6) for up in range(4)]
 
 def align(a,b):
     res = {}
@@ -49,9 +67,18 @@ def align(a,b):
 
     return res
 
-a = np.array([[1, 2, 3]])
+a = np.array([[1, 0, 0],
+              [0, 2, 0],
+              [0, 0, 3]])
+
+for i, t in enumerate(transforms):
+    print(i, t.params)
+    print(t(a))
+
+a = np.array([[1,2,3]])
 s = set(tuple(t(a)[0]) for t in transforms)
-print(len(s))
+
+print('transforms', len(s))
 
 alignments = defaultdict(dict)
 for i,s1 in enumerate(scanners):
