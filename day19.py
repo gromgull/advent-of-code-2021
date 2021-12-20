@@ -21,24 +21,32 @@ def transform(xyz, signs):
     return t
 
 # this produces 48 transformations, not 24
-transforms = [ transform(xyz, signs) for xyz in itertools.permutations(range(3)) for signs in itertools.product([-1,1],[-1,1],[-1,1]) ]
+transforms = [ transform(xyz, signs) for xyz in itertools.permutations(range(3)) for signs in itertools.product([1,-1],[1,-1],[1,-1]) ]
 
 def align(a,b):
-    res = {}
-    aset = set(tuple(x) for x in a)
-    for t in transforms:
-        tb = t(b)
+
+    x = constellations[a][0]
+
+    ts = []
+    for t in constellations[b]:
+        c = len(x.intersection(constellations[b][t]))
+        if c>3:
+            ts.append(transforms[t])
+            #print(a,b,transforms[t].params,c)
+
+    aset = set(tuple(x) for x in scanners[a])
+    for t in ts:
+        tb = t(scanners[b])
         for x in tb:
-            for y in a:
+            for y in scanners[a]:
                 offset = x-y
                 ob = tb-offset
 
                 oset = set(tuple(x) for x in ob)
                 c = len(aset.intersection(oset))
                 if c>11:
-                    res[t,tuple(offset)] = c
+                    return t,tuple(offset)
 
-    return res
 
 a = np.array([[1, 0, 0],
               [0, 2, 0],
@@ -53,6 +61,14 @@ s = set(tuple(t(a)[0]) for t in transforms)
 
 print('transforms', len(s))
 
+constellations = defaultdict(lambda : defaultdict(set))
+for i,s in enumerate(scanners):
+
+    for a in s:
+        c = a-s
+        for j,t in enumerate(transforms):
+            constellations[i][j].update(tuple(o) for o in t(c))
+
 alignments = defaultdict(dict)
 for i,s1 in enumerate(scanners):
     for j,s2 in enumerate(scanners):
@@ -60,9 +76,8 @@ for i,s1 in enumerate(scanners):
         # we could skip comparing 1-0, when we already did 0-1
         # but then I would have to work out how to invert transforms
         if i==j: continue
-        a = align(s1,s2)
+        a = align(i,j)
         if a:
-            a = list(a)[0]
             alignments[i][j] = a
             print(i,j,a[0].params, a[1])
 
