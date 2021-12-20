@@ -1,7 +1,8 @@
+import itertools
 from collections import defaultdict
 import numpy as np
 
-lines = [ l.strip() for l in open('test19.txt') ]
+lines = [ l.strip() for l in open('input19.txt') ]
 
 scanners = []
 for l in lines:
@@ -11,44 +12,16 @@ for l in lines:
 
 scanners = [ np.array(s) for s in scanners ]
 
-def transform(front, up):
+def transform(xyz, signs):
 
-    rz,ry = [
-        [ 0, 0],
-        [ 1, 0],
-        [ 2, 0],
-        [ 3, 0],
-        [ 0, 1],
-        [ 0, 3]][front]
+    def t(rows):
+        return rows[:,xyz]*signs
 
-    crz = np.cos(rz*np.pi/2)
-    srz = np.sin(rz*np.pi/2)
-
-    cry = np.cos(ry*np.pi/2)
-    sry = np.sin(ry*np.pi/2)
-
-    crx = np.cos(up*np.pi/2)
-    srx = np.sin(up*np.pi/2)
-
-    mx = [[1,   0,    0],
-          [0, crx, -srx],
-          [0, srx,  crx]]
-    my = [[cry,  0, sry],
-          [0,    1,   0],
-          [-sry, 0, cry]]
-    mz = [[crz, -srz, 0],
-          [srz,  crz, 0],
-          [0,      0, 1]]
-
-    m = (np.array(mz, dtype=int) @ my) @ mx
-
-    def t(xyz):
-        return np.matmul(xyz, m).astype(int)
-
-    t.params = (front, up)
+    t.params = (xyz, signs)
     return t
 
-transforms = [ transform(front, up) for front in range(6) for up in range(4)]
+# this produces 48 transformations, not 24
+transforms = [ transform(xyz, signs) for xyz in itertools.permutations(range(3)) for signs in itertools.product([-1,1],[-1,1],[-1,1]) ]
 
 def align(a,b):
     res = {}
@@ -111,4 +84,30 @@ def walk(scanner):
     return res
 
 beacons = set(tuple(s) for s in walk(0))
+
 print(len(beacons))
+
+done = set([0])
+
+def walk2(scanner):
+    res = np.array([[0,0,0]])
+
+    for a in alignments[scanner]:
+        if a in done:
+            print('skipping', scanner, '->', a)
+            continue
+        print('adding', scanner, '->', a)
+        transform, offset = alignments[scanner][a]
+        done.add(a)
+        res = np.vstack([res, transform(walk2(a))-offset])
+
+    return res
+
+ss = walk2(0)
+
+dist = []
+for x in ss:
+    for y in ss:
+        dist.append(np.abs(x-y).sum())
+
+print(sorted(dist))
