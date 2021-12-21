@@ -84,8 +84,8 @@ for i,s1 in enumerate(scanners):
 scanner = 0
 done = set([0])
 
-def walk(scanner):
-    res = scanners[scanner]
+def walk(scanner, key):
+    res = key(scanner)
 
     for a in alignments[scanner]:
         if a in done:
@@ -94,35 +94,21 @@ def walk(scanner):
         print('adding', scanner, '->', a)
         transform, offset = alignments[scanner][a]
         done.add(a)
-        res = np.vstack([res, transform(walk(a))-offset])
+        res = np.vstack([res, transform(walk(a, key))-offset])
 
     return res
 
-beacons = set(tuple(s) for s in walk(0))
+beacons = set(tuple(s) for s in walk(0, lambda s: scanners[s]))
 
 print(len(beacons))
 
 done = set([0])
 
-def walk2(scanner):
-    res = np.array([[0,0,0]])
-
-    for a in alignments[scanner]:
-        if a in done:
-            print('skipping', scanner, '->', a)
-            continue
-        print('adding', scanner, '->', a)
-        transform, offset = alignments[scanner][a]
-        done.add(a)
-        res = np.vstack([res, transform(walk2(a))-offset])
-
-    return res
-
-ss = walk2(0)
+ss = walk(0, key=lambda _: np.array([[0,0,0]]))
 
 dist = []
 for x in ss:
     for y in ss:
         dist.append(np.abs(x-y).sum())
 
-print(sorted(dist))
+print(max(dist))
