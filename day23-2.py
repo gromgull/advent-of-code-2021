@@ -8,8 +8,12 @@ map = '''
 #12.3.4.5.67#
 ###8#A#C#E###
   #9#B#D#F#
+  #G#I#K#M#
+  #H#J#L#N#
   #########
 '''
+
+base = '0123456789abcdefghijklmn'
 
 _links = [
     ( 1, 2, 1),
@@ -29,7 +33,15 @@ _links = [
     ( 5, 6, 2),
     (14,15, 1),
     (14, 6, 2),
-    ( 6, 7, 1)
+    ( 6, 7, 1),
+    ( 9,16, 1),
+    (16,17, 1),
+    (11,18, 1),
+    (18,19, 1),
+    (13,20, 1),
+    (20,21, 1),
+    (15,22, 1),
+    (22,23, 1),
 ]
 
 links = defaultdict(dict)
@@ -57,7 +69,7 @@ def find_paths(i):
 
 
     res = {}
-    for j in range(1,16):
+    for j in range(1,24):
         if i == j: continue
         path = [j]
         e = j
@@ -70,21 +82,21 @@ def find_paths(i):
 
     return res
 
-paths = { i:find_paths(i) for i in range(1,16) }
+paths = { i:find_paths(i) for i in range(1,24) }
 
 energy = dict(A=1,B=10,C=100,D=1000)
 
-slots = dict(A=[9,8], B=[11,10], C=[13,12], D=[15,14])
+slots = dict(A=[9,8,16,17], B=[11,10,18,19], C=[13,12,20,21], D=[15,14,22,23])
 
 
 def show(types, pos, last):
     out = map.lower()
     for i in range(len(pos)):
-        out = out.replace('%x'%pos[i], types[i])
+        out = out.replace(base[pos[i]], types[i])
 
-    out = out.replace('%x'%last, '+')
+    out = out.replace(base[last], '+')
 
-    out = re.sub('[0-9a-f]','.', out)
+    out = re.sub('[0-9a-n]','.', out)
     return out
 
 def playback(types, pos, moves):
@@ -100,27 +112,26 @@ def playback(types, pos, moves):
 
 def possible_moves(types, pos, i):
 
-    # i'm already at the back of my room
-    if pos[i]>7 and pos[i] == slots[types[i]][0]: return []
+    my_room = slots[types[i]]
+
+    # i'm already at the back of my room - don't move
+    if pos[i]>7 and pos[i] in my_room and all(x in pos and types[pos.index(x)] == types[i] for x in my_room if x>pos[i] ): return []
 
     res = []
     for p,(path,cost) in paths[pos[i]].items():
         #print(f'considering {p} from {pos[i]}, {path} in {pos}')
 
         # do go into wrong room
-        if p>7 and p not in slots[types[i]]: continue
+        if p>7 and p not in my_room: continue
 
-        back, front = slots[types[i]]
+        # don't take pos in my room if a position further back is free
+        if p in my_room and any(x not in pos for x in my_room if x>p): continue
 
-        # don't take the front pos if the back is empty
-        if p == front and back not in pos: continue
-
-        # don't go into your room if it's blocking someone else
-        if p == front and back in pos and types[pos.index(back)] != types[i] : continue
+        # don't go into your room if it's blocking another type from getting out
+        if p in my_room and any(x in pos and types[pos.index(x)] != types[i] for x in my_room if x>p ): continue
 
         # don't leave your room unless you are blocking someone else
-        if p<8 and pos[i]>7 and pos[i] == front \
-          and back in pos and types[pos.index(back)] == types[i]: continue
+        if p<8 and pos[i]>7 and p in my_room and not any( x in pos and types[pos.index(x)] != types[i] for x in my_room if x>pos[i]): continue
 
         # don't move around in the corridor
         if pos[i]<8 and p<8: continue
@@ -134,23 +145,21 @@ def possible_moves(types, pos, i):
 DEBUG = False
 
 min_cost = 10000000
-n = 0
 
 @cache
 def get_cost(types, pos, cost_so_far=0):
-    global min_cost,n
-
-    n = n+1
-    if DEBUG: print(show(types, pos))
+    global min_cost
+    if DEBUG: print(show(types, pos,-1))
 
     if all(pos[i] in slots[types[i]] for i in range(len(pos))):
         if cost_so_far<min_cost:
             print(f"Found new min {cost_so_far} < {min_cost}")
             min_cost = cost_so_far
         #print('done!')
-        #import ipdb; ipdb.set_trace()
+
         return [[]]
 
+#    import ipdb; ipdb.set_trace()
     res = []
     for i in range(len(pos)):
         for p,cost in possible_moves(types, pos, i):
@@ -167,24 +176,29 @@ def get_cost(types, pos, cost_so_far=0):
     return res
 
 # example
-#types = 'AABBCCDD'
-#pos = (9,15,8,12,10,13,11,14)
+types = 'AAAABBBBCCCCDDDD'
+pos = (15,20,17,23,
+       8,12,13,18,
+       10,11,22,21,
+       14,9,16,19)
 
 # mine:
 #############
 #...........#
 ###B#A#B#C###
+  #D#C#B#A#
+  #D#B#A#C#
   #C#D#D#A#
   #########
-types = 'AABBCCDD'
-pos = (10,15,8,12,9,14,11,13)
+
+pos = (10,15,20,23,
+        8,12,13,18,
+       14,11,22,17,
+        9,16,19,21)
 
 moves = get_cost(types, pos)
+
 moves = [ (sum(x[3] for x in m),m) for m in moves ]
 best = min(moves)
 
-#best = ([(3, 12, 3), (4, 10, 4), (4, 4, 12), (6, 11, 4), (3, 3, 11), (2, 8, 3), (2, 3, 10), (7, 14, 5), (1, 15, 6), (7, 5, 15), (6, 4, 14), (1, 6, 8)], 11520)
-
 playback(types, pos, best[1])
-
-print(f"visited {n} states")
